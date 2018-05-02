@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="4.1.2" links="0">
+ <documentation>Simple Blinky example for QP-nano, which demonstrates:
+- Active object (Blinky) with state machine
+- Board Support Package abstraction for portability
+- BSP implementation for desktop OS (Windows, Linux, Mac)
+- Platform-independent main() function
+- make.bat batch file for Windows</documentation>
+ <framework name="qpn"/>
+ <package name="AOs" stereotype="0x02">
+  <class name="RC5Process" superclass="qpn::QActive">
+   <statechart>
+    <initial target="../1">
+     <initial_glyph conn="2,3,5,1,20,4,-4">
+      <action box="0,-2,6,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="process_rc5_cmd">
+     <tran trig="RC5_DATA_READY">
+      <action>int16_t cmd = rc5GetCommand();
+
+switch(cmd)
+{
+  case RC5_CODE_STANDBY: {
+    QACTIVE_POST((QActive *)&amp;AO_Refresher, R_STANDBY_SIG, 0U);
+    break;
+  }
+  case RC5_CODE_CHANNEL_UP: {
+    QACTIVE_POST((QActive *)&amp;AO_Refresher, R_REFRESH_CMD_SIG, 0U);
+    break;
+  }
+  case RC5_CODE_VOLUME_UP: {
+    QACTIVE_POST((QActive *)&amp;AO_Refresher, R_SET_INTERVAL_CMD_SIG, 0U);
+    break;
+  }
+  case RC5_CODE_VOLUME_DOWN: {
+    QACTIVE_POST((QActive *)&amp;AO_Refresher, R_SET_INTERVAL_CMD_SIG, 1U);
+    break;
+  }
+  default:{
+    break;
+  }
+}
+</action>
+      <tran_glyph conn="2,12,3,-1,20">
+       <action box="0,-2,17,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="2,5,16,10"/>
+    </state>
+    <state_diagram size="31,22"/>
+   </statechart>
+  </class>
+  <class name="Refresher" superclass="qpn::QActive">
+   <attribute name="time_to_refresh" type="uint16_t" visibility="0x00" properties="0x00"/>
+   <statechart>
+    <initial target="../2">
+     <initial_glyph conn="96,16,5,0,-7,9">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="on">
+     <entry>lllioSetLEDState(GREEN_LED, LED_ON);</entry>
+     <exit>lllioSetLEDState(GREEN_LED, LED_OFF);</exit>
+     <tran trig="R_STANDBY" target="../../2">
+      <tran_glyph conn="68,30,1,3,12">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state name="wait">
+      <entry>QActive_armX((QActive *)me, 1U, ((me-&gt;time_to_refresh)*8000), 0);</entry>
+      <exit>QActive_disarmX((QActive *)me, 1U);</exit>
+      <tran trig="R_REFRESH_CMD" target="../../2">
+       <tran_glyph conn="44,40,0,2,-12">
+        <action box="-14,-10,13,2"/>
+       </tran_glyph>
+      </tran>
+      <tran trig="R_SET_INTERVAL_CMD" target="../../3">
+       <tran_glyph conn="41,46,3,2,-24,-5">
+        <action box="-21,-3,18,3"/>
+       </tran_glyph>
+      </tran>
+      <tran trig="Q_TIMEOUT1" target="../../2">
+       <tran_glyph conn="47,40,0,2,-12">
+        <action box="0,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="41,40,21,10">
+       <entry box="1,2,6,2"/>
+       <exit box="1,4,6,2"/>
+      </state_glyph>
+     </state>
+     <state name="refresh">
+      <entry>lllioRefresherOn();
+QActive_armX((QActive *)me, 0U, 500U, 0);</entry>
+      <exit>lllioRefresherOff();
+QActive_disarmX((QActive *)me, 0U);</exit>
+      <tran trig="Q_TIMEOUT" target="../../1">
+       <tran_glyph conn="58,28,2,0,12">
+        <action box="0,1,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="41,17,21,11">
+       <entry box="1,2,18,4"/>
+       <exit box="1,6,20,4"/>
+      </state_glyph>
+     </state>
+     <state name="set_intervals">
+      <entry>//lllioSetLEDState(RED_LED, LED_ON);
+lllioToggleRedLed();
+QActive_armX((QActive *)me, 0U, 1000U, 0);
+
+if(0 == Q_PAR(me))
+{
+  if(me-&gt;time_to_refresh &lt; 8) {
+    me-&gt;time_to_refresh++;
+  }
+  //  lllioToggleRedLed();
+}
+else if(1 == Q_PAR(me))
+{
+  if(me-&gt;time_to_refresh &gt; 1) {
+    me-&gt;time_to_refresh--;
+  }
+    //lllioToggleRedLed();
+}
+else
+{
+}</entry>
+      <exit>
+QActive_disarmX((QActive *)me, 0U);</exit>
+      <tran trig="Q_TIMEOUT" target="../../2">
+       <action>lllioSetLEDState(RED_LED, LED_OFF);</action>
+       <tran_glyph conn="17,28,0,3,-6,24">
+        <action box="0,-5,12,2"/>
+       </tran_glyph>
+      </tran>
+      <tran trig="R_SET_INTERVAL_CMD" target="..">
+       <tran_glyph conn="9,37,3,1,16">
+        <action box="0,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="9,28,16,13">
+       <entry box="1,2,6,2"/>
+       <exit box="1,4,6,2"/>
+      </state_glyph>
+     </state>
+     <state_glyph node="7,10,61,53">
+      <entry box="1,2,6,2"/>
+      <exit box="1,4,6,2"/>
+     </state_glyph>
+    </state>
+    <state name="off">
+     <tran trig="R_STANDBY" target="../../1/1">
+      <tran_glyph conn="80,46,3,1,-18">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="80,25,18,24"/>
+    </state>
+    <state_diagram size="113,72"/>
+   </statechart>
+  </class>
+  <operation name="RC5Process_ctor" type="void" visibility="0x00" properties="0x01">
+   <documentation>The Blinky &quot;constructor&quot; is provided outside of the Blinky class, so that it can be used independently from the class. This is part of the &quot;opaque pointer&quot; design idiom.</documentation>
+   <code>RC5Process * const me = &amp;AO_RC5Process;
+QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;RC5Process_initial));</code>
+  </operation>
+  <operation name="Refresher_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>Refresher * const me = &amp;AO_Refresher;
+QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;Refresher_initial));
+me-&gt;time_to_refresh = 8;</code>
+  </operation>
+ </package>
+ <directory name=".">
+  <file name="rc5process.c">
+   <text>#include &quot;qpn.h&quot;    /* QP-nano framework API */
+#include &quot;bsp.h&quot;    /* Board Support Package interface */
+#include &quot;rc5process.h&quot;
+#include &quot;refresher.h&quot;
+#include &quot;rc5.h&quot;
+#include &quot;lllio.h&quot;
+
+/* ask QM to declare the Blinky class --------------------------------------*/
+$declare${AOs::RC5Process}
+
+/* the single instance of the Blinky active object -------------------------*/
+RC5Process AO_RC5Process;
+
+/* ask QM to define the Blinky class ---------------------------------------*/
+$define${AOs::RC5Process_ctor}
+$define${AOs::RC5Process}</text>
+  </file>
+  <file name="rc5process.h">
+   <text>#ifndef RC5PROCESS_H
+#define RC5PROCESS_H
+
+#include&quot;qpn.h&quot;
+
+/* define the event signals used in the application ------------------------*/
+enum RC5Signals {
+    RC5_DATA_READY_SIG = Q_USER_SIG,
+    MAX_SIG /* the last signal */
+};
+
+/* active object(s) used in this application -------------------------------*/
+extern struct RC5Process AO_RC5Process; /* opaque struct */
+$declare${AOs::RC5Process_ctor}
+
+#endif /* RC5PROCESS_H */</text>
+  </file>
+  <file name="refresher.h">
+   <text>#ifndef REFRESHER_H
+#define REFRESHER_H
+
+#include&quot;qpn.h&quot;
+
+/* define the event signals used in the application ------------------------*/
+enum RefresherSignals {
+    R_REFRESH_CMD_SIG = Q_USER_SIG,
+    R_STANDBY_SIG,
+    R_SET_INTERVAL_CMD_SIG,
+    R_MAX_SIG /* the last signal */
+};
+
+/* active object(s) used in this application -------------------------------*/
+extern struct Refresher AO_Refresher; /* opaque struct */
+$declare${AOs::Refresher_ctor}
+
+#endif /* REFRESHER_H */</text>
+  </file>
+  <file name="refresher.c">
+   <text>#include &quot;qpn.h&quot;    /* QP-nano framework API */
+#include &quot;bsp.h&quot;    /* Board Support Package interface */
+#include &quot;lllio.h&quot;
+#include &quot;refresher.h&quot;
+
+/* ask QM to declare the Blinky class --------------------------------------*/
+$declare${AOs::Refresher}
+
+/* the single instance of the Blinky active object -------------------------*/
+Refresher AO_Refresher;
+
+/* ask QM to define the Blinky class ---------------------------------------*/
+$define${AOs::Refresher_ctor}
+$define${AOs::Refresher}</text>
+  </file>
+ </directory>
+ <directory name="../../">
+  <file name="main.c">
+   <text>#include &quot;qpn.h&quot;    /* QP-nano framework API */
+#include &quot;rc5process.h&quot;    /* Board Support Package interface */
+#include &quot;refresher.h&quot;
+
+/* Local-scope objects -----------------------------------------------------*/
+static QEvt l_rc5processQSto[5]; /* Event queue storage for RC5 */
+static QEvt l_refresherQSto[10];
+
+/* QF_active[] array defines all active object control blocks --------------*/
+QActiveCB const Q_ROM QF_active[] = {
+    { (QActive *)0,               (QEvt *)0,         0U                       },
+    { (QActive *)&amp;AO_Refresher,   l_refresherQSto,   Q_DIM(l_refresherQSto)   },
+    { (QActive *)&amp;AO_RC5Process,  l_rc5processQSto,  Q_DIM(l_rc5processQSto)  }
+};
+
+/* the main function -------------------------------------------------------*/
+int main(void) {
+    QF_init(Q_DIM(QF_active)); /* initialize the QF-nano framework */
+    BSP_init(); /* initialize the Board Support Package */
+
+    RC5Process_ctor(); /* in C you must explicitly call the Blinky constructor */
+    Refresher_ctor();
+    return QF_run(); /* transfer control to QF-nano */
+}</text>
+  </file>
+  <file name="qpn_conf.h">
+   <text>#ifndef qpn_conf_h
+#define qpn_conf_h
+
+#define Q_PARAM_SIZE            1
+#define QF_MAX_TICK_RATE        2
+#define QF_TIMEEVT_CTR_SIZE     2
+#define QF_TIMEEVT_PERIODIC
+
+#endif  /* qpn_conf_h */</text>
+  </file>
+ </directory>
+</model>
