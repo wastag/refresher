@@ -57,7 +57,7 @@ PROJECT     := refresher-m32u4
 
 # location of the QP-nano framework (if not provided in an environemnt var.)
 ifeq ($(QPN),)
-QPN := ../../../../..
+QPN := ../../../../../qp/qpn
 endif
 
 # QP port used in this project
